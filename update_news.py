@@ -3,7 +3,7 @@ import os
 import urllib.request
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-CHANNEL_USERNAME = "@smtpofficemarket"
+CHANNEL_USERNAME = "smtpofficemarket"
 NEWS_FILE = "news.json"
 STATE_FILE = "last_update_id.txt"
 
