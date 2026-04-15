@@ -33,4 +33,5 @@ jobs:
           touch last_update_id.txt
           git add news.json last_update_id.txt
           git diff --cached --quiet || git commit -m "Update news.json"
+          git pull --rebase
           git push
