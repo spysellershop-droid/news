@@ -2,15 +2,29 @@ import json
 import os
 import urllib.request
 import traceback
+from urllib.parse import quote
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 CHANNEL_USERNAME = "smtpofficemarket"
 NEWS_FILE = "news.json"
 STATE_FILE = "last_update_id.txt"
+MEDIA_DIR = "media"
+SITE_BASE_URL = "https://spysellershop-droid.github.io/news"
+
+os.makedirs(MEDIA_DIR, exist_ok=True)
+
 
 def get_json(url):
     with urllib.request.urlopen(url) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+def download_file(url, path):
+    with urllib.request.urlopen(url) as r:
+        data = r.read()
+    with open(path, "wb") as f:
+        f.write(data)
+
 
 def load_last_update_id():
     if os.path.exists(STATE_FILE):
@@ -19,9 +33,11 @@ def load_last_update_id():
             return int(value) if value else None
     return None
 
+
 def save_last_update_id(update_id):
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         f.write(str(update_id))
+
 
 def load_news():
     if os.path.exists(NEWS_FILE):
@@ -32,9 +48,11 @@ def load_news():
             return json.loads(content)
     return []
 
+
 def save_news(news):
     with open(NEWS_FILE, "w", encoding="utf-8") as f:
         json.dump(news, f, ensure_ascii=False, indent=2)
+
 
 def extract_text(msg):
     text = msg.get("text")
@@ -59,6 +77,80 @@ def extract_text(msg):
         return "Sticker post"
 
     return "Channel update"
+
+
+def get_extension_from_path(file_path, fallback=".bin"):
+    _, ext = os.path.splitext(file_path)
+    return ext if ext else fallback
+
+
+def telegram_file_url(file_path):
+    safe_path = quote(file_path)
+    return f"https://api.telegram.org/file/bot{BOT_TOKEN}/{safe_path}"
+
+
+def get_file_path(file_id):
+    file_info = get_json(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/getFile?file_id={quote(file_id)}"
+    )
+    if not file_info.get("ok"):
+        return None
+    return file_info["result"].get("file_path")
+
+
+def save_media_from_file_id(file_id, local_name_prefix, fallback_ext=".bin"):
+    file_path = get_file_path(file_id)
+    if not file_path:
+        return None
+
+    ext = get_extension_from_path(file_path, fallback_ext)
+    local_filename = f"{local_name_prefix}{ext}"
+    local_path = os.path.join(MEDIA_DIR, local_filename)
+
+    download_file(telegram_file_url(file_path), local_path)
+
+    return f"{SITE_BASE_URL}/{MEDIA_DIR}/{quote(local_filename)}"
+
+
+def extract_media(msg, message_id):
+    media_type = None
+    image_url = None
+    video_url = None
+
+    if msg.get("photo"):
+        media_type = "photo"
+        largest_photo = msg["photo"][-1]
+        file_id = largest_photo.get("file_id")
+        if file_id:
+            image_url = save_media_from_file_id(
+                file_id,
+                f"msg_{message_id}_photo",
+                ".jpg"
+            )
+
+    elif msg.get("video"):
+        media_type = "video"
+        file_id = msg["video"].get("file_id")
+        if file_id:
+            video_url = save_media_from_file_id(
+                file_id,
+                f"msg_{message_id}_video",
+                ".mp4"
+            )
+
+        thumb = msg["video"].get("thumbnail")
+        if thumb and thumb.get("file_id"):
+            image_url = save_media_from_file_id(
+                thumb["file_id"],
+                f"msg_{message_id}_video_thumb",
+                ".jpg"
+            )
+
+    elif msg.get("document"):
+        media_type = "document"
+
+    return media_type, image_url, video_url
+
 
 def main():
     last_update_id = load_last_update_id()
@@ -99,12 +191,17 @@ def main():
         full_text = extract_text(msg)
         lines = [x.strip() for x in full_text.split("\n") if x.strip()]
 
+        media_type, image_url, video_url = extract_media(msg, message_id)
+
         item = {
             "id": message_id,
             "title": lines[0] if lines else "Channel Update",
-            "text": full_text[:250],
+            "text": full_text[:500],
             "date": msg.get("date", 0),
-            "url": f"https://t.me/{CHANNEL_USERNAME}/{message_id}"
+            "url": f"https://t.me/{CHANNEL_USERNAME}/{message_id}",
+            "media_type": media_type,
+            "image": image_url,
+            "video": video_url
         }
 
         news = [x for x in news if x.get("id") != message_id]
@@ -115,6 +212,7 @@ def main():
 
     save_news(news)
     print("news.json updated")
+
 
 if __name__ == "__main__":
     try:
