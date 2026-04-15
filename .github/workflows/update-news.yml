@@ -30,8 +30,9 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          touch last_update_id.txt
-          git add news.json last_update_id.txt
-          git diff --cached --quiet || git commit -m "Update news.json"
           git pull --rebase
+          touch last_update_id.txt
+          mkdir -p media
+          git add news.json last_update_id.txt media
+          git diff --cached --quiet || git commit -m "Update news and media"
           git push
