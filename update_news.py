@@ -108,25 +108,49 @@ def extract_media(msg, message_id):
         # PHOTO
         if msg.get("photo"):
             file_id = msg["photo"][-1]["file_id"]
-            image_url = save_media_from_file_id(file_id, f"msg_{message_id}_photo.jpg")
+
+            image_url = save_media_from_file_id(
+                file_id, f"msg_{message_id}_photo"
+            )
+
             return "photo", image_url, None
 
         # VIDEO
         if msg.get("video"):
             file_id = msg["video"]["file_id"]
 
-            try:
-                video_url = save_media_from_file_id(file_id, f"msg_{message_id}_video.mp4")
-                return "video", None, video_url
-            except:
-                # ❗ fallback لو الفيديو متسحبش
-                thumb = msg["video"].get("thumb") or msg["video"].get("thumbnail")
-                if thumb:
-                    file_id = thumb["file_id"]
-                    image_url = save_media_from_file_id(file_id, f"msg_{message_id}_thumb.jpg")
-                    return "photo", image_url, None
+            video_url = None
+            image_url = None
 
-                return "none", None, None
+            # 🔹 حاول تنزل الفيديو
+            try:
+                video_url = save_media_from_file_id(
+                    file_id, f"msg_{message_id}_video"
+                )
+            except Exception as e:
+                print("VIDEO DOWNLOAD FAILED:", str(e))
+
+            # 🔹 لو الفيديو فشل → هات thumbnail
+            if not video_url:
+                thumb = msg["video"].get("thumb") or msg["video"].get("thumbnail")
+
+                if thumb:
+                    try:
+                        image_url = save_media_from_file_id(
+                            thumb["file_id"], f"msg_{message_id}_thumb"
+                        )
+                    except Exception as e:
+                        print("THUMB FAILED:", str(e))
+
+            # 🔹 لو عندنا فيديو
+            if video_url:
+                return "video", None, video_url
+
+            # 🔹 fallback صورة
+            if image_url:
+                return "photo", image_url, None
+
+            return "none", None, None
 
         return "none", None, None
 
