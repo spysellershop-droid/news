@@ -55,13 +55,13 @@ def save_news(news):
 
 
 def extract_text(msg):
-    text = msg.get("text")
-    if text:
-        return text
+    if "text" in msg and msg["text"]:
+        return msg["text"]
 
-    caption = msg.get("caption")
-    if caption:
-        return caption
+    if "caption" in msg and msg["caption"]:
+        return msg["caption"]
+
+    return ""
 
     if msg.get("photo"):
         return "Photo post"
@@ -189,7 +189,7 @@ def main():
             continue
 
         full_text = extract_text(msg)
-        lines = [x.strip() for x in full_text.split("\n") if x.strip()]
+        lines = full_text.split("\n") if full_text else []
 
         media_type, image_url, video_url = extract_media(msg, message_id)
 
