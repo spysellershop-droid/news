@@ -30,9 +30,17 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git pull --rebase
+
           touch last_update_id.txt
           mkdir -p media
+
           git add news.json last_update_id.txt media
-          git diff --cached --quiet || git commit -m "Update news and media"
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Update news and media"
+          git pull --rebase
           git push
