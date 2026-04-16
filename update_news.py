@@ -55,11 +55,17 @@ def save_news(news):
 
 
 def extract_text(msg):
-    if "text" in msg and msg["text"]:
+    if msg.get("text"):
         return msg["text"]
 
-    if "caption" in msg and msg["caption"]:
+    if msg.get("caption"):
         return msg["caption"]
+
+    if msg.get("photo"):
+        return "📸 Photo post"
+
+    if msg.get("video"):
+        return "🎥 Video post"
 
     return ""
 
