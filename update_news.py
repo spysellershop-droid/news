@@ -69,21 +69,6 @@ def extract_text(msg):
 
     return ""
 
-    if msg.get("photo"):
-        return "Photo post"
-    if msg.get("video"):
-        return "Video post"
-    if msg.get("document"):
-        return "Document post"
-    if msg.get("audio"):
-        return "Audio post"
-    if msg.get("voice"):
-        return "Voice post"
-    if msg.get("sticker"):
-        return "Sticker post"
-
-    return "Channel update"
-
 
 def get_extension_from_path(file_path, fallback=".bin"):
     _, ext = os.path.splitext(file_path)
@@ -201,8 +186,8 @@ def main():
 
         item = {
             "id": message_id,
-            "title": lines[0] if lines else "Channel Update",
-            "text": full_text[:500],
+            "title": lines[0].strip() if lines and lines[0].strip() else "Channel Update",
+            "text": full_text[:1000],
             "date": msg.get("date", 0),
             "url": f"https://t.me/{CHANNEL_USERNAME}/{message_id}",
             "media_type": media_type,
