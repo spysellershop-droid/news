@@ -129,7 +129,7 @@ def extract_media(msg, message_id):
                 ".mp4"
             )
 
-        thumb = msg["video"].get("thumbnail")
+        thumb = msg["video"].get("thumbnail") or msg["video"].get("thumb")
         if thumb and thumb.get("file_id"):
             image_url = save_media_from_file_id(
                 thumb["file_id"],
@@ -138,7 +138,34 @@ def extract_media(msg, message_id):
             )
 
     elif msg.get("document"):
-        media_type = "document"
+        doc = msg["document"]
+        mime_type = doc.get("mime_type", "")
+        file_name = doc.get("file_name", "").lower()
+        file_id = doc.get("file_id")
+
+        is_video_document = (
+            mime_type.startswith("video/")
+            or file_name.endswith((".mp4", ".mov", ".webm", ".mkv"))
+        )
+
+        if is_video_document:
+            media_type = "video"
+            if file_id:
+                video_url = save_media_from_file_id(
+                    file_id,
+                    f"msg_{message_id}_video",
+                    ".mp4"
+                )
+
+            thumb = doc.get("thumbnail") or doc.get("thumb")
+            if thumb and thumb.get("file_id"):
+                image_url = save_media_from_file_id(
+                    thumb["file_id"],
+                    f"msg_{message_id}_video_thumb",
+                    ".jpg"
+                )
+        else:
+            media_type = "document"
 
     return media_type, image_url, video_url
 
