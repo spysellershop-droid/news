@@ -104,70 +104,35 @@ def save_media_from_file_id(file_id, local_name_prefix, fallback_ext=".bin"):
 
 
 def extract_media(msg, message_id):
-    media_type = None
-    image_url = None
-    video_url = None
+    try:
+        # PHOTO
+        if msg.get("photo"):
+            file_id = msg["photo"][-1]["file_id"]
+            image_url = save_media_from_file_id(file_id, f"msg_{message_id}_photo.jpg")
+            return "photo", image_url, None
 
-    if msg.get("photo"):
-        media_type = "photo"
-        largest_photo = msg["photo"][-1]
-        file_id = largest_photo.get("file_id")
-        if file_id:
-            image_url = save_media_from_file_id(
-                file_id,
-                f"msg_{message_id}_photo",
-                ".jpg"
-            )
+        # VIDEO
+        if msg.get("video"):
+            file_id = msg["video"]["file_id"]
 
-    elif msg.get("video"):
-        media_type = "video"
-        file_id = msg["video"].get("file_id")
-        if file_id:
-            video_url = save_media_from_file_id(
-                file_id,
-                f"msg_{message_id}_video",
-                ".mp4"
-            )
+            try:
+                video_url = save_media_from_file_id(file_id, f"msg_{message_id}_video.mp4")
+                return "video", None, video_url
+            except:
+                # ❗ fallback لو الفيديو متسحبش
+                thumb = msg["video"].get("thumb") or msg["video"].get("thumbnail")
+                if thumb:
+                    file_id = thumb["file_id"]
+                    image_url = save_media_from_file_id(file_id, f"msg_{message_id}_thumb.jpg")
+                    return "photo", image_url, None
 
-        thumb = msg["video"].get("thumbnail") or msg["video"].get("thumb")
-        if thumb and thumb.get("file_id"):
-            image_url = save_media_from_file_id(
-                thumb["file_id"],
-                f"msg_{message_id}_video_thumb",
-                ".jpg"
-            )
+                return "none", None, None
 
-    elif msg.get("document"):
-        doc = msg["document"]
-        mime_type = doc.get("mime_type", "")
-        file_name = doc.get("file_name", "").lower()
-        file_id = doc.get("file_id")
+        return "none", None, None
 
-        is_video_document = (
-            mime_type.startswith("video/")
-            or file_name.endswith((".mp4", ".mov", ".webm", ".mkv"))
-        )
-
-        if is_video_document:
-            media_type = "video"
-            if file_id:
-                video_url = save_media_from_file_id(
-                    file_id,
-                    f"msg_{message_id}_video",
-                    ".mp4"
-                )
-
-            thumb = doc.get("thumbnail") or doc.get("thumb")
-            if thumb and thumb.get("file_id"):
-                image_url = save_media_from_file_id(
-                    thumb["file_id"],
-                    f"msg_{message_id}_video_thumb",
-                    ".jpg"
-                )
-        else:
-            media_type = "document"
-
-    return media_type, image_url, video_url
+    except Exception as e:
+        print("MEDIA ERROR:", str(e))
+        return "none", None, None
 
 
 def main():
